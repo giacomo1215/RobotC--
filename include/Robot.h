@@ -18,7 +18,7 @@ class Robot {
     std::pair<int, int> position; // Posizione del robot
     static std::mt19937 gen;      // Generatore di numeri casuali
 
-    // Moved from derived classes to eliminate duplication
+    // Metodo per ottenere la variazione di posizione in base alla direzione
     std::pair<int, int> directionToDelta(Direction dir) const {
       switch (dir) {
         case Direction::UP: return {-1, 0};
@@ -29,11 +29,12 @@ class Robot {
       }
     }
 
+    // Metodo per calcolare la direzione tra due posizioni
     Direction calculateDirection(const std::pair<int, int>& from, const std::pair<int, int>& to) const {
-      if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;
-      if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;
-      if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;
-      if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;
+      if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;     // Controllo se la posizione to è sopra la posizione from
+      if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;  // Controllo se la posizione to è a destra della posizione from
+      if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;   // Controllo se la posizione to è sotto la posizione from
+      if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;   // Controllo se la posizione to è a sinistra della posizione from
       return Direction::NONE;
     }
 
