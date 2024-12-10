@@ -1,4 +1,4 @@
-# Robot
+# Robot in labirinto
 #### Laboratorio 8 del corso Laboratorio di Programmazione
 #### Studente: [Giacomo Giorgi](https://github.com/giacomo1215)
 
