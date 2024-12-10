@@ -10,8 +10,11 @@
 
 class Maze;
 
+enum class Direction { UP, RIGHT, DOWN, LEFT, NONE }; // Enum per le direzioni
+
 class Robot {
   protected:
+    Direction direction;          // Direzione del robot
     std::pair<int, int> position; // Posizione del robot
     std::random_device rd;        // Generatore di numeri casuali
     std::mt19937 gen;
@@ -21,36 +24,73 @@ class Robot {
     virtual ~Robot() = default;                                             // Distruttore virtuale
     virtual bool move(Maze& maze) = 0;                                      // Metodo virtuale puro
     std::pair<int, int> getPosition() const { return position; }            // Getter per la posizione
+    // Definisci la direzione con degli ENUM
 };
 
 /*
   Un robot che effettua movimenti casuali tra le 8 caselle vicine alla posizione corrente
 */
 class RandomRobot : public Robot {
+  private: 
+    std::vector<std::pair<int, int>> visitedPos;                    // Vettore di posizioni visitate
+    Direction currentDirection = Direction::NONE;                   // Direzione attuale
+    
+    // Funzione per ottenere il delta di movimento in base alla direzione
+    std::pair<int, int> directionToDelta(Direction dir) const {
+        switch (dir) {
+            case Direction::UP: return {-1, 0};
+            case Direction::RIGHT: return {0, 1};
+            case Direction::DOWN: return {1, 0};
+            case Direction::LEFT: return {0, -1};
+            default: return {0, 0};
+        }
+    }
+
+    // Funzione per calcolare la direzione data una posizione precedente e una corrente
+    Direction calculateDirection(const std::pair<int, int>& from, const std::pair<int, int>& to) const {
+        if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;
+        if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;
+        if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;
+        if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;
+        return Direction::NONE;
+    }
+
   public:
     RandomRobot(std::pair<int, int> startPos) : Robot(startPos) {}  // Costruttore di RandomRobot
 
-    bool move(Maze& maze) override {                                // Implementazione del metodo move per RandomRobot
-      // Distribuzioni uniformi per x e y
-      std::uniform_int_distribution<> distX(-1, 1);                 // Distribuzione uniforme per x
-      std::uniform_int_distribution<> distY(-1, 1);                 // Distribuzione uniforme per y
+    bool move(Maze& maze) override {
+      if (maze.isExit(position)) return true;         // Controllo se la posizione attuale è una delle uscite
+      if (!maze.isValidMove(position)) return false;  // Controllo se la posizione attuale è un muro
 
-      // Provo a fare mosse casuali finché non ne trovo una valida
-      for (int attempts = 0; attempts < 8; ++attempts) {
-        int dx = distX(gen), dy = distY(gen);
+      if (currentDirection != Direction::NONE) {
+        auto delta = directionToDelta(currentDirection);
+        std::pair<int, int> newPos = {position.first + delta.first, position.second + delta.second};
 
-        // Evito di stare nello stesso posto
-        if (dx == 0 && dy == 0) continue;
-
-        // Calcolo la nuova posizione
-        std::pair<int, int> newPos = {position.first + dx, position.second + dy};
-
-        // Controllo se la nuova posizione è valida
         if (maze.isValidMove(newPos)) {
-          position = newPos; 
+          position = newPos;
+          visitedPos.push_back(position);
           return true;
         }
       }
+
+      // Se non può andare nella direzione corrente, prova a cambiare direzione in modo casuale
+      std::vector<Direction> possibleDirections = {Direction::UP, Direction::RIGHT, Direction::DOWN, Direction::LEFT};
+      std::shuffle(possibleDirections.begin(), possibleDirections.end(), gen);
+
+      for (const auto& dir : possibleDirections) {
+          auto delta = directionToDelta(dir);
+          std::pair<int, int> newPos = {position.first + delta.first, position.second + delta.second};
+
+          if (maze.isValidMove(newPos)) {
+              position = newPos;
+              visitedPos.push_back(position);
+              currentDirection = dir; // Aggiorna la direzione corrente
+              return true;
+          }
+      }
+
+      // Nessuna mossa valida trovata
+      currentDirection = Direction::NONE; // Resetta la direzione
       return false;
     }
 };
@@ -63,86 +103,99 @@ class RandomRobot : public Robot {
 */
 class RightHandRuleRobot : public Robot {
   private:
-    enum class Direction { UP, RIGHT, DOWN, LEFT }; // Enum per le direzioni
-    Direction currentDirection;                     // Direzione attuale
+    Direction currentDirection = Direction::NONE; // Direzione attuale inizializzata a none
+    
+    // Funzione per ottenere il delta di movimento in base alla direzione
+    std::pair<int, int> directionToDelta(Direction dir) const {
+        switch (dir) {
+            case Direction::UP: return {-1, 0};
+            case Direction::RIGHT: return {0, 1};
+            case Direction::DOWN: return {1, 0};
+            case Direction::LEFT: return {0, -1};
+            default: return {0, 0};
+        }
+    }
+
+    // Funzione per calcolare la direzione data una posizione precedente e una corrente
+    Direction calculateDirection(const std::pair<int, int>& from, const std::pair<int, int>& to) const {
+        if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;
+        if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;
+        if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;
+        if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;
+        return Direction::NONE;
+    }
 
   public:
     RightHandRuleRobot(std::pair<int,int> startPos)       // Costruttore di RightHandRuleRobot
     : Robot(startPos), currentDirection(Direction::UP) {} 
 
     bool move(Maze& maze) override {                      // Implementazione del metodo move per RightHandRuleRobot
-      // Controllo se la posizione attuale è una delle uscite
-      if (maze.isExit(position)) return true;
+      if (maze.isExit(position)) return true;             // Controllo se la posizione attuale è una delle uscite
+      if (!maze.isValidMove(position)) return false;      // Controllo se la posizione attuale è un muro
 
-      // Controllo se la posizione attuale è il punto di partenza
-      if (position == maze.getStart()) {
-        // Se la posizione iniziale non è a contatto con un muro, scelgo una direzione casuale
-        if (!maze.isValidMove({position.first - 1, position.second})) currentDirection = Direction::UP;
-        else if (!maze.isValidMove({position.first, position.second + 1})) currentDirection = Direction::RIGHT;
-        else if (!maze.isValidMove({position.first + 1, position.second})) currentDirection = Direction::DOWN;
-        else if (!maze.isValidMove({position.first, position.second - 1})) currentDirection = Direction::LEFT;
+      // Lista delle direzioni da provare: seguendo il muro alla destra
+      std::vector<Direction> priorityDirections = {
+        turnRight(currentDirection),        // Tentativo di girare a destra
+        currentDirection,                   // Procedi dritto
+        turnLeft(currentDirection),         // Tentativo di girare a sinistra
+        oppositeDirection(currentDirection) // Torna indietro se necessario
       };
 
-      // Controllo se la posizione attuale è un muro
-      if (!maze.isValidMove(position)) return false;
+      auto delta = directionToDelta(currentDirection);
+      std::pair<int, int> newPos = {position.first + delta.first, position.second + delta.second};
 
-      // Vettore di possibili direzioni dove andare
-      std::vector<std::pair<int, int>> possibleMoves;
+      if (maze.isValidMove(newPos)) {
+        position = newPos; // Aggiorna la posizione
+        return true;
+      } else {
+        // Prova a cambiare direzione
+        for (const auto& dir : priorityDirections) {
+          auto delta = directionToDelta(dir);
+          std::pair<int, int> newPos = {position.first + delta.first, position.second + delta.second};
 
-      // Aggiungo le possibili mosse al vettore in base alla direzione attuale
-      switch (currentDirection) {
-        case Direction::UP:
-          possibleMoves = {
-            {position.first - 1, position.second}, // Sopra
-            {position.first, position.second + 1}, // Destra
-            {position.first, position.second - 1}  // Sinistra
-          };
-          break;
-
-        case Direction::RIGHT:
-          possibleMoves = {
-            {position.first, position.second + 1}, // Destra
-            {position.first + 1, position.second}, // Sotto
-            {position.first - 1, position.second}  // Sopra
-          };
-          break;
-
-        case Direction::DOWN:
-          possibleMoves = {
-            {position.first + 1, position.second}, // Sotto
-            {position.first, position.second + 1}, // Destra
-            {position.first, position.second - 1}  // Sinistra
-          };
-          break;
-
-        case Direction::LEFT:
-          possibleMoves = {
-            {position.first, position.second - 1}, // Sinistra
-            {position.first + 1, position.second}, // Sotto
-            {position.first - 1, position.second}  // Sopra
-          };
-          break;
-
-        default:
-          break;
-      }
-
-      // Controllo se le possibili mosse sono valide
-      for (const auto& move : possibleMoves) {
-        if (maze.isValidMove(move)) {
-          position = move; // Aggiorno la posizione
-
-          // Aggiorno la direzione attuale
-          if (move.first == position.first - 1) currentDirection = Direction::UP;           // Sopra
-          else if (move.second == position.second + 1) currentDirection = Direction::RIGHT; // Destra
-          else if (move.first == position.first + 1) currentDirection = Direction::DOWN;    // Sotto
-          else if (move.second == position.second - 1) currentDirection = Direction::LEFT;  // Sinistra
-          return true;
+          if (maze.isValidMove(newPos)) {
+            position = newPos;      // Aggiorna la posizione
+            currentDirection = dir; // Aggiorna la direzione corrente
+            return true;
+          }
         }
       }
 
-      return false;
+      return false; // Nessuna mossa valida trovata
     };
+
+    // Metodo per ottenere la direzione a destra rispetto a quella attuale
+    Direction turnRight(Direction dir) const {
+      switch (dir) {
+        case Direction::UP: return Direction::RIGHT;
+        case Direction::RIGHT: return Direction::DOWN;
+        case Direction::DOWN: return Direction::LEFT;
+        case Direction::LEFT: return Direction::UP;
+        default: return Direction::NONE;
+      }
+    }
+
+    // Metodo per ottenere la direzione a sinistra rispetto a quella attuale
+    Direction turnLeft(Direction dir) const {
+      switch (dir) {
+          case Direction::UP: return Direction::LEFT;
+          case Direction::LEFT: return Direction::DOWN;
+          case Direction::DOWN: return Direction::RIGHT;
+          case Direction::RIGHT: return Direction::UP;
+          default: return Direction::NONE;
+      }
+    }
+
+    // Metodo per ottenere la direzione opposta a quella attuale
+    Direction oppositeDirection(Direction dir) const {
+      switch (dir) {
+          case Direction::UP: return Direction::DOWN;
+          case Direction::DOWN: return Direction::UP;
+          case Direction::LEFT: return Direction::RIGHT;
+          case Direction::RIGHT: return Direction::LEFT;
+          default: return Direction::NONE;
+      }
+    }
 };
 
 #endif // ROBOT_H

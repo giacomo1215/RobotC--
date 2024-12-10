@@ -38,8 +38,9 @@ class Maze {
         
         // Controllo dove si trova il punto di partenza e le uscite
         for (int x = 0; x < line.length(); ++x) {
-          if (line[x] == 'S') start = {y, x};
-          if (line[x] == 'E') finish.push_back({y, x});
+          if (line[x] == 'S') start = {y, x};           // Aggiungo la posizione di partenza
+          if (line[x] == 'E') finish.push_back({y, x}); // Aggiungo la posizione dell'uscita
+          row.push_back(line[x]);                       // Aggiungo il carattere alla riga
         }
 
         // Aggiungo la riga letta al labirinto
@@ -72,6 +73,20 @@ class Maze {
 
     const std::vector<std::vector<char>>& getMaze() const {
       return maze;
+    };
+
+    void print(const std::pair<int, int>& pos) const {
+      // Estraggo le coordinate di pos
+      int y = pos.first, x = pos.second;
+
+      // Stampo il labirinto
+      for (int i = 0; i < maze.size(); ++i) {
+        for (int j = 0; j < maze[i].size(); ++j) {
+          if (i == y && j == x) std::cout << 'R'; // Stampo il robot
+          else std::cout << maze[i][j];           // Stampo il labirinto
+        }
+        std::cout << std::endl;
+      }
     };
 };
 
