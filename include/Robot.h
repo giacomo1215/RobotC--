@@ -16,16 +16,37 @@ class Robot {
   protected:
     Direction direction;          // Direzione del robot
     std::pair<int, int> position; // Posizione del robot
-    std::random_device rd;        // Generatore di numeri casuali
-    std::mt19937 gen;
+    static std::mt19937 gen;      // Generatore di numeri casuali
+
+    // Moved from derived classes to eliminate duplication
+    std::pair<int, int> directionToDelta(Direction dir) const {
+      switch (dir) {
+        case Direction::UP: return {-1, 0};
+        case Direction::RIGHT: return {0, 1};
+        case Direction::DOWN: return {1, 0};
+        case Direction::LEFT: return {0, -1};
+        default: return {0, 0};
+      }
+    }
+
+    Direction calculateDirection(const std::pair<int, int>& from, const std::pair<int, int>& to) const {
+      if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;
+      if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;
+      if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;
+      if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;
+      return Direction::NONE;
+    }
 
   public:
-    Robot(std::pair<int, int> startPos) : position(startPos), gen(rd()) {}  // Costruttore di Robot
-    virtual ~Robot() = default;                                             // Distruttore virtuale
-    virtual bool move(Maze& maze) = 0;                                      // Metodo virtuale puro
-    std::pair<int, int> getPosition() const { return position; }            // Getter per la posizione
+    Robot(const std::pair<int, int>& startPos) : position(startPos) {}  // Costruttore di Robot
+    virtual ~Robot() = default;                                         // Distruttore virtuale
+    virtual bool move(Maze& maze) = 0;                                  // Metodo virtuale puro
+    std::pair<int, int> getPosition() const { return position; }        // Getter per la posizione
     // Definisci la direzione con degli ENUM
 };
+
+// Initialize static member outside the class
+std::mt19937 Robot::gen{std::random_device{}()};
 
 /*
   Un robot che effettua movimenti casuali tra le 8 caselle vicine alla posizione corrente
@@ -34,29 +55,9 @@ class RandomRobot : public Robot {
   private: 
     std::vector<std::pair<int, int>> visitedPos;                    // Vettore di posizioni visitate
     Direction currentDirection = Direction::NONE;                   // Direzione attuale
-    
-    // Funzione per ottenere il delta di movimento in base alla direzione
-    std::pair<int, int> directionToDelta(Direction dir) const {
-        switch (dir) {
-            case Direction::UP: return {-1, 0};
-            case Direction::RIGHT: return {0, 1};
-            case Direction::DOWN: return {1, 0};
-            case Direction::LEFT: return {0, -1};
-            default: return {0, 0};
-        }
-    }
-
-    // Funzione per calcolare la direzione data una posizione precedente e una corrente
-    Direction calculateDirection(const std::pair<int, int>& from, const std::pair<int, int>& to) const {
-        if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;
-        if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;
-        if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;
-        if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;
-        return Direction::NONE;
-    }
 
   public:
-    RandomRobot(std::pair<int, int> startPos) : Robot(startPos) {}  // Costruttore di RandomRobot
+    RandomRobot(const std::pair<int, int>& startPos) : Robot(startPos) {}  // Costruttore di RandomRobot
 
     bool move(Maze& maze) override {
       if (maze.isExit(position)) return true;         // Controllo se la posizione attuale è una delle uscite
@@ -104,29 +105,9 @@ class RandomRobot : public Robot {
 class RightHandRuleRobot : public Robot {
   private:
     Direction currentDirection = Direction::NONE; // Direzione attuale inizializzata a none
-    
-    // Funzione per ottenere il delta di movimento in base alla direzione
-    std::pair<int, int> directionToDelta(Direction dir) const {
-        switch (dir) {
-            case Direction::UP: return {-1, 0};
-            case Direction::RIGHT: return {0, 1};
-            case Direction::DOWN: return {1, 0};
-            case Direction::LEFT: return {0, -1};
-            default: return {0, 0};
-        }
-    }
-
-    // Funzione per calcolare la direzione data una posizione precedente e una corrente
-    Direction calculateDirection(const std::pair<int, int>& from, const std::pair<int, int>& to) const {
-        if (to.first == from.first - 1 && to.second == from.second) return Direction::UP;
-        if (to.first == from.first && to.second == from.second + 1) return Direction::RIGHT;
-        if (to.first == from.first + 1 && to.second == from.second) return Direction::DOWN;
-        if (to.first == from.first && to.second == from.second - 1) return Direction::LEFT;
-        return Direction::NONE;
-    }
 
   public:
-    RightHandRuleRobot(std::pair<int,int> startPos)       // Costruttore di RightHandRuleRobot
+    RightHandRuleRobot(const std::pair<int,int>& startPos)       // Costruttore di RightHandRuleRobot
     : Robot(startPos), currentDirection(Direction::UP) {} 
 
     bool move(Maze& maze) override {                      // Implementazione del metodo move per RightHandRuleRobot
